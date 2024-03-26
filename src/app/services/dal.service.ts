@@ -1,15 +1,23 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { HelloRequest, HelloResponse } from 'src/proto-output/greeting-service.pb';
-import { GreetingServiceClient } from 'src/proto-output/greeting-service.pbsc';
+import { Subject } from 'rxjs';
+import { GreetingServiceClient } from 'src/proto-output/GreetingService_grpc_web_pb';
+import { HelloRequest, HelloResponse } from 'src/proto-output/GreetingService_pb';
 
 @Injectable({
   providedIn: 'root',
 })
 export class DalService {
-  constructor(private client: GreetingServiceClient) {}
+  private client: GreetingServiceClient;
+  constructor() {
+    this.client = new GreetingServiceClient('http://localhost:8080');
+  }
 
-  public sendGreeting(helloRequest: HelloRequest): Observable<HelloResponse> {
-    return this.client.greeting(helloRequest);
+  public sendGreeting(helloRequest: HelloRequest): Subject<HelloResponse> {
+    const subject = new Subject<HelloResponse>();
+    const call = this.client.greeting(helloRequest, { 'custom-header-1': 'value1' });
+    call.on('data', value => subject.next(value));
+    call.on('end', () => subject.complete());
+    call.on('error', error => subject.error(error));
+    return subject;
   }
 }
